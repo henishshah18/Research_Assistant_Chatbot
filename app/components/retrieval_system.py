@@ -313,36 +313,25 @@ class RetrievalSystem:
     def _reciprocal_rank_fusion(self, dense_results: List[Dict], sparse_results: List[Dict], k: int) -> List[Dict]:
         """Combine dense and sparse results using reciprocal rank fusion"""
         try:
-            # Create a mapping of document IDs to combined scores
+            # Create separate mappings for scores and documents
             score_map = {}
+            doc_map = {}
             
             # Add dense results
             for rank, result in enumerate(dense_results):
                 doc_id = result['title']  # Using title as unique identifier
                 score_map[doc_id] = score_map.get(doc_id, 0) + DENSE_WEIGHT / (rank + 1)
-                if doc_id not in score_map:
-                    score_map[doc_id] = result
-                else:
-                    score_map[doc_id].update(result)
+                doc_map[doc_id] = result
             
             # Add sparse results
             for rank, result in enumerate(sparse_results):
                 doc_id = result['title']
-                if doc_id in score_map:
-                    # Document exists, update score
-                    existing_score = score_map[doc_id] if isinstance(score_map[doc_id], (int, float)) else 0
-                    score_map[doc_id] = existing_score + SPARSE_WEIGHT / (rank + 1)
-                else:
-                    # New document
-                    score_map[doc_id] = SPARSE_WEIGHT / (rank + 1)
+                score_map[doc_id] = score_map.get(doc_id, 0) + SPARSE_WEIGHT / (rank + 1)
+                if doc_id not in doc_map:
+                    doc_map[doc_id] = result
             
             # Create combined results
             combined_results = []
-            doc_map = {}
-            
-            # Create document mapping
-            for result in dense_results + sparse_results:
-                doc_map[result['title']] = result
             
             # Sort by combined score
             sorted_docs = sorted(score_map.items(), key=lambda x: x[1], reverse=True)
